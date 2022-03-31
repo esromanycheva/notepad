@@ -23,6 +23,6 @@ entry = Post.create(choices[choice])
 
 entry.read_from_console
 
-entry.save_to_db
+rowid = entry.save_to_db
 
-puts "УРА, запись сохранена, id = #{id}"
+puts "УРА, запись сохранена, id = #{rowid}"

@@ -1,8 +1,9 @@
 require 'sqlite3'
+require 'pry'
 
 class Post
 
-  @@SQLITE_DB_FILE = 'notepad.db3'
+  SQLITE_DB_FILE = 'notepad.db3'.freeze
 
   def self.post_types
     { 'Memo' => Memo, 'Task' => Task, 'Link' => Link }
@@ -13,11 +14,11 @@ class Post
   end
 
   def self.find(limit, type, id)
-    db = SQLite3::Database.open(@@SQLITE_DB_FILE)
+    db = SQLite3::Database.open(SQLITE_DB_FILE)
 
     if !id.nil?
       db.results_as_hash = true
-      result = db.execute("SELECT * FROM posts WHERE ID = ?", id)
+      result = db.execute("SELECT * FROM posts WHERE rowid = ?", id)
       result = result[0] if result.is_a? Array
       db.close
 
@@ -26,12 +27,32 @@ class Post
         return nil
       else
         post = create(result['type'])
+
         post.load_data(result)
         return post
       end
-
     else
 
+      db.results_as_hash = false
+
+      query = "SELECT rowid, * FROM posts "
+
+      query += "WHERE type = :type " unless type.nil?
+      query += "ORDER by rowid DESC "
+
+      query += "LIMIT :limit " unless limit.nil?
+
+      statement = db.prepare(query)
+
+      statement.bind_param('type', type) unless type.nil?
+      statement.bind_param('limit', limit) unless limit.nil?
+
+      result = statement.execute!
+
+      statement.close
+      db.close
+
+      return result
     end
   end
 
@@ -66,17 +87,16 @@ class Post
   end
 
   def save_to_db
-    db = SQLite3::Database.open(@@SQLITE_DB_FILE)
+    db = SQLite3::Database.open(SQLITE_DB_FILE)
     db.results_as_hash = true
+
+    post_hash = to_db_hash
 
     db.execute(
       "INSERT INTO posts (" +
-        to_db_hash.keys.join(',') +
-        ")" +
-        "VALUES (" +
-        ('?,'*to_db_hash.keys.size).chomp(',') +
-        ")" +
-        to_db_hash.values
+        post_hash.keys.join(', ') +
+        ") VALUES (#{('?,' * post_hash.size).chomp(',')})",
+      post_hash.values
     )
 
     insert_row_id = db.last_insert_row_id

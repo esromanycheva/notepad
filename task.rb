@@ -21,7 +21,7 @@ class Task < Post
   def to_strings
     time_string = "Создано: #{@created_at.strftime("%Y.%m.%d, %H:%M:%S")} \n\r \n\r"
 
-    deadline = "Крайний срок: #{@due_date}"
+    deadline = "Крайний срок: #{@due_date..strftime('%Y.%m.%d')}"
 
     return [deadline, @text, time_string]
   end
